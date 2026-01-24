@@ -1,13 +1,16 @@
 //
-//  SampleModuleRegistry.swift
-//  SwiftPackageGenerator
+//  ExampleModuleRegistry.swift
+//  PackageGeneratorExamples
 //
 //  Created by Stephane Magne on 2026-01-24.
 //
 
+import PackageGeneratorCore
+
 extension Module {
-    // Screens
-    static var screenA: Module {
+    // MARK: - Screens
+    
+    public static var screenA: Module {
         Module(
             name: "ScreenA",
             type: .screen,
@@ -15,7 +18,7 @@ extension Module {
         )
     }
 
-    static var screenB: Module {
+    public static var screenB: Module {
         Module(
             name: "ScreenB",
             type: .screen,
@@ -23,8 +26,9 @@ extension Module {
         )
     }
 
-    // Coordinators
-    static var tabCoordinator: Module {
+    // MARK: - Coordinators
+    
+    public static var tabCoordinator: Module {
         Module(
             name: "TabCoordinator",
             type: .coordinator,
@@ -32,8 +36,9 @@ extension Module {
         )
     }
 
-    // Utilities
-    static var dependencyContainer: Module {
+    // MARK: - Utilities
+    
+    public static var dependencyContainer: Module {
         Module(
             name: "DependencyContainer",
             type: .utility,
@@ -41,17 +46,20 @@ extension Module {
         )
     }
 
-    // Macros
-    static var dependencyRequirements: Module {
+    // MARK: - Macros
+    
+    public static var dependencyRequirements: Module {
         Module(
             name: "DependencyRequirements",
             type: .macro,
+            productType: .macro,
             hasTests: false
         )
     }
 
-    // Clients
-    static var contentClient: Module {
+    // MARK: - Clients
+    
+    public static var contentClient: Module {
         Module(
             name: "ContentClient",
             type: .client,

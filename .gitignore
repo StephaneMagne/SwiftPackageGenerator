@@ -1,0 +1,14 @@
+# Xcode
+.DS_Store
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+
+# SPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Generated packages (example output)
+GeneratedPackages/
