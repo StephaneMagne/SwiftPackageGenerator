@@ -107,9 +107,20 @@ public struct PackageGenerator {
             attributes: nil
         )
         
-        // Create a placeholder file so Xcode doesn't complain
-        let placeholderPath = "\(testsPath)/.gitkeep"
-        try "".write(toFile: placeholderPath, atomically: true, encoding: .utf8)
+        // Create placeholder Swift file so SPM doesn't complain about empty target
+        let placeholderContent = """
+        //
+        //  Tests.swift
+        //  Root Test Target
+        //
+        //  This file exists only to satisfy Swift Package Manager's requirement
+        //  that targets must contain at least one source file.
+        //
+        
+        
+        """
+        let placeholderPath = "\(testsPath)/Tests.swift"
+        try placeholderContent.write(toFile: placeholderPath, atomically: true, encoding: .utf8)
         
         // Generate root Package.swift
         let packageContent = node.renderRootPackage(
