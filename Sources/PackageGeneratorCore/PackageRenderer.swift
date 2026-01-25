@@ -38,7 +38,7 @@ extension ModuleNode {
         let targets = renderTargets()
         
         return """
-        // swift-tools-version: 5.10
+        // swift-tools-version: \(configuration.swiftToolsVersion)
         // ⚠️ Generated file — do not edit by hand
         import PackageDescription\(additionalImports)
         

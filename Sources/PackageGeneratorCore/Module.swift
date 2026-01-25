@@ -13,7 +13,7 @@ public enum ModuleType {
     case macro
     case screen
     case utility
-    case root  // Special aggregator package for workspace visibility
+    case root // Special aggregator package for workspace visibility
 }
 
 // MARK: - Product Type
@@ -23,7 +23,7 @@ public enum ProductType {
     case library
     case macro
     case plugin
-    case none  // For aggregator packages without products
+    case none // For aggregator packages without products
 }
 
 // MARK: - Module Location
@@ -311,7 +311,7 @@ extension ModuleType {
     var defaultSupportedPlatforms: [Platform] {
         switch self {
         case .macro:
-            return [.macOS(majorVersion: 10)]  // Macros require macOS(.v10_15)
+            return [.macOS(majorVersion: 10, minorVersion: 15)] // Macros require macOS(.v10_15)
         case .client,
              .coordinator,
              .screen,

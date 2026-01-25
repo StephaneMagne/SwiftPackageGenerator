@@ -41,15 +41,18 @@ public struct ModuleDirectoryConfiguration {
 }
 
 public struct PackageConfiguration {
+    public let swiftToolsVersion: String
     public let supportedPlatforms: [Platform]
     public let swiftSettings: [String]
     public let moduleDirectoryConfiguration: ModuleDirectoryConfiguration
     
     public init(
+        swiftToolsVersion: String = "5.10",
         supportedPlatforms: [Platform],
         swiftSettings: [String],
         moduleDirectoryConfiguration: ModuleDirectoryConfiguration
     ) {
+        self.swiftToolsVersion = swiftToolsVersion
         self.supportedPlatforms = supportedPlatforms
         self.swiftSettings = swiftSettings
         self.moduleDirectoryConfiguration = moduleDirectoryConfiguration
