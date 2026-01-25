@@ -46,7 +46,7 @@ public struct PackageGenerator {
     
     private func generatePackage(for node: ModuleNode) throws {
         // Check if this is a root package
-        if case .type(.root) = node.module.location {
+        if case .type(.root, _, _) = node.module.location {
             try generateRootPackage(for: node)
             return
         }

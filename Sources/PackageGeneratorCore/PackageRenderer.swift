@@ -17,8 +17,10 @@ extension ModuleNode {
             ? "\nimport CompilerPluginSupport"
             : ""
         
-        // Render platforms (macros need macOS minimum)
-        let platforms = renderPlatforms(configuration: configuration)
+        // Render platforms (uses resolved platforms with configuration + module + defaults)
+        let platforms = module.resolvedPlatforms(using: configuration)
+            .map { $0.rendered }
+            .joined(separator: ", ")
         
         // Render swift settings variable
         let swiftSettingsVar = renderSwiftSettingsVariable(configuration.swiftSettings)
@@ -51,26 +53,6 @@ extension ModuleNode {
         """
     }
     
-    private func renderPlatforms(configuration: PackageConfiguration) -> String {
-        var platforms = configuration.supportedPlatforms
-        
-        // Macros require macOS(.v10_15) minimum
-        if module.productType == .macro {
-            let hasMacOS = platforms.contains { platform in
-                if case .macOS = platform { return true }
-                return false
-            }
-            
-            if !hasMacOS {
-                platforms.insert(.macOS(majorVersion: 10), at: 0)
-            }
-        }
-        
-        return platforms
-            .map { $0.rendered }
-            .joined(separator: ", ")
-    }
-    
     private func renderSwiftSettingsVariable(_ settings: [String]) -> String {
         let settingsBody = settings
             .map { "    \($0)" }
@@ -85,7 +67,9 @@ extension ModuleNode {
     
     private func renderProductsSection() -> String {
         // No products for .none product type
-        guard let products = renderProducts() else { return "" }
+        guard module.productType != .none else { return "" }
+        
+        let products = renderProducts()
         guard !products.isEmpty else { return "" }
         
         return """
@@ -96,9 +80,9 @@ extension ModuleNode {
         """
     }
     
-    private func renderProducts() -> String? {
+    private func renderProducts() -> String {
         // No products for .none type
-        guard module.productType != .none else { return nil }
+        guard module.productType != .none else { return "" }
 
         // For macros, only expose the client target (.main), not the implementation
         let productTargets = module.targets.filter { $0 != .macroImplementation }

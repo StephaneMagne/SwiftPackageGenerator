@@ -30,7 +30,7 @@ public enum ProductType {
 
 public enum ModuleLocation {
     case path(String)
-    case type(ModuleType)
+    case type(ModuleType, path: String?, subpath: String?)
 }
 
 // MARK: - Module Targets
@@ -81,6 +81,7 @@ public struct Module: Hashable {
     public let productType: ProductType
     public let hasTests: Bool
     public let externalDependencies: [ExternalDependency]
+    public let supportedPlatforms: [Platform]
     public let macroConfig: MacroConfiguration?
 
     public init(
@@ -89,7 +90,8 @@ public struct Module: Hashable {
         targets: [ModuleTarget]? = nil,
         productType: ProductType = .library,
         hasTests: Bool = true,
-        externalDependencies: [ExternalDependency] = []
+        externalDependencies: [ExternalDependency] = [],
+        supportedPlatforms: [Platform] = []
     ) {
         self.name = name
         self.targets = targets ?? [.main]
@@ -97,24 +99,29 @@ public struct Module: Hashable {
         self.productType = productType
         self.hasTests = hasTests
         self.externalDependencies = externalDependencies
+        self.supportedPlatforms = supportedPlatforms
         self.macroConfig = nil
     }
 
     public init(
         name: String,
         type: ModuleType,
+        path: String? = nil,
+        subpath: String? = nil,
         targets: [ModuleTarget]? = nil,
         productType: ProductType = .library,
         hasTests: Bool = true,
-        externalDependencies: [ExternalDependency] = []
+        externalDependencies: [ExternalDependency] = [],
+        supportedPlatforms: [Platform] = []
     ) {
         self.name = name
         self.targets = targets ?? type.defaultTargets
-        self.location = .type(type)
+        self.location = .type(type, path: path, subpath: subpath)
         self.productType = productType
         self.hasTests = hasTests
         self.macroConfig = type == .macro ? MacroConfiguration() : nil
-        
+        self.supportedPlatforms = supportedPlatforms
+
         // Auto-inject swift-syntax for macros
         if type == .macro && externalDependencies.isEmpty {
             self.externalDependencies = [
@@ -131,16 +138,20 @@ public struct Module: Hashable {
     
     public init(
         macroName: String,
+        path: String? = nil,
+        subpath: String? = nil,
         macroConfig: MacroConfiguration = MacroConfiguration(),
-        hasTests: Bool = true
+        hasTests: Bool = true,
+        supportedPlatforms: [Platform] = []
     ) {
         self.name = macroName
         self.targets = [.main, .macroImplementation]
-        self.location = .type(.macro)
+        self.location = .type(.macro, path: path, subpath: subpath)
         self.productType = .macro
         self.hasTests = hasTests
         self.macroConfig = macroConfig
-        
+        self.supportedPlatforms = supportedPlatforms
+
         // Auto-inject swift-syntax dependency
         self.externalDependencies = [
             ExternalDependency(
@@ -186,14 +197,19 @@ extension Module {
         switch location {
         case .path(let path):
             return path
-        case .type(let type):
-            let directory = configuration.moduleDirectoryConfiguration.directoryForType[type]!
-            
-            // For non-root types, append the module name to the directory
-            if type == .root {
-                return directory
+        case .type(let type, let path, let subpath):
+            let subpathDirectory = subpath.flatMap { "/\($0)" } ?? ""
+            if let path {
+                // Explicit path is the complete location (name not appended)
+                return path + subpathDirectory
             } else {
-                return "\(directory)/\(name)"
+                // Default directory is the parent, append module name
+                let directory = configuration.moduleDirectoryConfiguration.directoryForType[type]!
+                if type == .root {
+                    return directory + subpathDirectory
+                } else {
+                    return "\(directory + subpathDirectory)/\(name)"
+                }
             }
         }
     }
@@ -201,10 +217,27 @@ extension Module {
     /// Returns the module name, deriving from configuration if needed
     public func resolvedName(using configuration: PackageConfiguration) -> String {
         // If name is empty and this is a root module, derive from path
-        if name.isEmpty, case .type(.root) = location {
+        if name.isEmpty, case .type(.root, _, _) = location {
             return configuration.moduleDirectoryConfiguration.rootModuleName
         }
         return name
+    }
+    
+    /// Returns the complete set of supported platforms for this module
+    /// Merges: configuration platforms + module-specific platforms + type defaults
+    public func resolvedPlatforms(using configuration: PackageConfiguration) -> [Platform] {
+        var platforms = configuration.supportedPlatforms
+        
+        // Add module-specific platforms
+        platforms.append(contentsOf: supportedPlatforms)
+        
+        // Add type-specific default platforms
+        if case .type(let type, _, _) = location {
+            platforms.append(contentsOf: type.defaultSupportedPlatforms)
+        }
+        
+        // Deduplicate by platform type (keep highest version for each platform)
+        return Platform.deduplicate(platforms)
     }
     
     /// Returns the target name for a given ModuleTarget
@@ -230,7 +263,7 @@ extension Module {
     
     /// Returns default dependencies based on module type and targets
     public var defaultDependencies: [ModuleTarget: [ModuleDependency]] {
-        guard case .type(let type) = location else { return [:] }
+        guard case .type(let type, _, _) = location else { return [:] }
         guard targets == type.defaultTargets else { return [:] }
 
         switch type {
@@ -272,6 +305,19 @@ extension ModuleType {
             return [.main, .macroImplementation]
         case .utility, .root:
             return [.main]
+        }
+    }
+    
+    var defaultSupportedPlatforms: [Platform] {
+        switch self {
+        case .macro:
+            return [.macOS(majorVersion: 10)]  // Macros require macOS(.v10_15)
+        case .client,
+             .coordinator,
+             .screen,
+             .root,
+             .utility:
+            return []
         }
     }
 }

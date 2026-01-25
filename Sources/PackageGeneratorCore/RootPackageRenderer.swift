@@ -12,7 +12,9 @@ extension ModuleNode {
         graph: [ModuleNode]
     ) -> String {
         let rootName = module.resolvedName(using: configuration)
-        let platforms = configuration.supportedPlatforms
+        
+        // Use resolved platforms (configuration + module + defaults)
+        let platforms = module.resolvedPlatforms(using: configuration)
             .map { $0.rendered }
             .joined(separator: ", ")
         
@@ -26,7 +28,7 @@ extension ModuleNode {
         
         // Group modules by type for organization
         let groupedModules = Dictionary(grouping: dependentNodes) { node -> ModuleType in
-            if case .type(let type) = node.module.location {
+            if case .type(let type, _, _) = node.module.location {
                 return type
             }
             return .utility // Default fallback
@@ -81,7 +83,7 @@ extension ModuleNode {
     ) -> String {
         // Group by type for clean organization
         let grouped = Dictionary(grouping: modules) { node -> String in
-            if case .type(let type) = node.module.location {
+            if case .type(let type, _, _) = node.module.location {
                 return typeLabel(for: type)
             }
             return "Other"
