@@ -11,6 +11,7 @@ struct GraphValidator {
     func validate() throws {
         try validateAllModulesExist()
         try validateExportsAreInDependencies()
+        try validateTargetsExist()
         try validateNoCycles()
     }
     
@@ -18,21 +19,23 @@ struct GraphValidator {
         let allModuleNames = Set(graph.map { $0.module.name })
         
         for node in graph {
-            // Check dependencies (extract modules from ModuleDependency)
-            for dependency in node.dependencies {
-                let dependencyModule: Module
-                switch dependency {
-                case .module(let module):
-                    dependencyModule = module
-                case .target(_, let module):
-                    dependencyModule = module
-                }
-                
-                guard allModuleNames.contains(dependencyModule.name) else {
-                    throw ValidationError.missingDependency(
-                        module: node.module.name,
-                        dependency: dependencyModule.name
-                    )
+            // Check dependencies across all targets
+            for (_, deps) in node.dependencies {
+                for dependency in deps {
+                    let dependencyModule: Module
+                    switch dependency {
+                    case .module(let module):
+                        dependencyModule = module
+                    case .target(_, let module):
+                        dependencyModule = module
+                    }
+                    
+                    guard allModuleNames.contains(dependencyModule.name) else {
+                        throw ValidationError.missingDependency(
+                            module: node.module.name,
+                            dependency: dependencyModule.name
+                        )
+                    }
                 }
             }
             
@@ -63,51 +66,108 @@ struct GraphValidator {
         }
     }
     
+    private func validateTargetsExist() throws {
+        for node in graph {
+            let validTargets = Set(node.module.targets)
+            
+            for (target, _) in node.dependencies {
+                guard validTargets.contains(target) else {
+                    throw ValidationError.invalidTarget(
+                        module: node.module.name,
+                        target: target
+                    )
+                }
+            }
+        }
+    }
+    
     private func validateNoCycles() throws {
-        let nodesByName = Dictionary(uniqueKeysWithValues: graph.map { ($0.module.name, $0) })
+        // Build a graph of target nodes
+        // Key: "ModuleName.TargetName"
+        var targetGraph: [String: Set<String>] = [:]
         
         for node in graph {
+            for target in node.module.targets {
+                let targetKey = targetNodeKey(module: node.module.name, target: target)
+                let deps = node.dependencies(for: target)
+                
+                var dependencyKeys = Set<String>()
+                for dep in deps {
+                    let depKey: String
+                    switch dep {
+                    case .module(let module):
+                        // Depending on a module means depending on its main target
+                        depKey = targetNodeKey(module: module.name, target: .main)
+                    case .target(let depTarget, let module):
+                        depKey = targetNodeKey(module: module.name, target: depTarget)
+                    }
+                    dependencyKeys.insert(depKey)
+                }
+                
+                targetGraph[targetKey] = dependencyKeys
+            }
+        }
+        
+        // Now detect cycles in the target graph
+        for targetKey in targetGraph.keys {
             var visited = Set<String>()
             var stack = Set<String>()
             
-            try detectCycle(
-                from: node.module.name,
+            try detectCycleInTargetGraph(
+                from: targetKey,
                 visited: &visited,
                 stack: &stack,
-                nodesByName: nodesByName
+                targetGraph: targetGraph
             )
         }
     }
     
-    private func detectCycle(
-        from moduleName: String,
+    private func targetNodeKey(module: String, target: ModuleTarget) -> String {
+        let targetName: String
+        switch target {
+        case .main:
+            targetName = "main"
+        case .interface:
+            targetName = "interface"
+        case .views:
+            targetName = "views"
+        case .custom(let name):
+            targetName = name
+        case .macroImplementation:
+            targetName = "implementation"
+        }
+        return "\(module).\(targetName)"
+    }
+    
+    private func detectCycleInTargetGraph(
+        from targetKey: String,
         visited: inout Set<String>,
         stack: inout Set<String>,
-        nodesByName: [String: ModuleNode]
+        targetGraph: [String: Set<String>]
     ) throws {
-        if stack.contains(moduleName) {
-            throw ValidationError.cyclicDependency(module: moduleName)
+        if stack.contains(targetKey) {
+            throw ValidationError.cyclicDependency(target: targetKey)
         }
         
-        if visited.contains(moduleName) {
+        if visited.contains(targetKey) {
             return
         }
         
-        visited.insert(moduleName)
-        stack.insert(moduleName)
+        visited.insert(targetKey)
+        stack.insert(targetKey)
         
-        if let node = nodesByName[moduleName] {
-            for dependencyModule in node.dependentModules {
-                try detectCycle(
-                    from: dependencyModule.name,
+        if let dependencies = targetGraph[targetKey] {
+            for dependencyKey in dependencies {
+                try detectCycleInTargetGraph(
+                    from: dependencyKey,
                     visited: &visited,
                     stack: &stack,
-                    nodesByName: nodesByName
+                    targetGraph: targetGraph
                 )
             }
         }
         
-        stack.remove(moduleName)
+        stack.remove(targetKey)
     }
 }
 
@@ -117,7 +177,8 @@ enum ValidationError: Error, CustomStringConvertible {
     case missingDependency(module: String, dependency: String)
     case missingExport(module: String, export: String)
     case exportNotInDependencies(module: String, export: String)
-    case cyclicDependency(module: String)
+    case cyclicDependency(target: String)
+    case invalidTarget(module: String, target: ModuleTarget)
     
     var description: String {
         switch self {
@@ -127,8 +188,10 @@ enum ValidationError: Error, CustomStringConvertible {
             return "Module '\(module)' exports '\(export)' which doesn't exist in the graph"
         case .exportNotInDependencies(let module, let export):
             return "Module '\(module)' exports '\(export)' but doesn't depend on it"
-        case .cyclicDependency(let module):
-            return "Cyclic dependency detected involving module '\(module)'"
+        case .cyclicDependency(let target):
+            return "Cyclic dependency detected involving target '\(target)'"
+        case .invalidTarget(let module, let target):
+            return "Module '\(module)' has dependencies for target '\(target)' which doesn't exist in its targets list"
         }
     }
 }

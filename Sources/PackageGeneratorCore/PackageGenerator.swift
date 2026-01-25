@@ -45,6 +45,12 @@ public struct PackageGenerator {
     }
     
     private func generatePackage(for node: ModuleNode) throws {
+        // Check if this is a root package
+        if case .type(.root) = node.module.location {
+            try generateRootPackage(for: node)
+            return
+        }
+        
         let modulePath = node.module.resolvedPath(using: configuration)
         let fullPath = "\(rootPath)/\(modulePath)"
         
@@ -80,6 +86,44 @@ public struct PackageGenerator {
         )
         
         print("  ✅ \(modulePath)/Package.swift")
+    }
+    
+    private func generateRootPackage(for node: ModuleNode) throws {
+        let modulePath = node.module.resolvedPath(using: configuration)
+        let fullPath = "\(rootPath)/\(modulePath)"
+        
+        // Create root directory
+        try FileManager.default.createDirectory(
+            atPath: fullPath,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        
+        // Create _ directory for the test target
+        let testsPath = "\(fullPath)/_"
+        try FileManager.default.createDirectory(
+            atPath: testsPath,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        
+        // Create a placeholder file so Xcode doesn't complain
+        let placeholderPath = "\(testsPath)/.gitkeep"
+        try "".write(toFile: placeholderPath, atomically: true, encoding: .utf8)
+        
+        // Generate root Package.swift
+        let packageContent = node.renderRootPackage(
+            using: configuration,
+            graph: graph
+        )
+        let packagePath = "\(fullPath)/Package.swift"
+        try packageContent.write(
+            toFile: packagePath,
+            atomically: true,
+            encoding: .utf8
+        )
+        
+        print("  ✅ \(modulePath)/Package.swift (root aggregator)")
     }
     
     private func createSourcesStructure(for node: ModuleNode, at modulePath: String) throws {

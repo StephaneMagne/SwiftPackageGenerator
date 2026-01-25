@@ -5,14 +5,38 @@
 //  Created by Stephane Magne on 2026-01-24.
 //
 
-public enum ModuleDependency {
+public enum ModuleDependency: Hashable {
     case module(Module)
     case target(ModuleTarget, module: Module)
+    
+    // Hashable conformance
+    public func hash(into hasher: inout Hasher) {
+        switch self {
+        case .module(let module):
+            hasher.combine("module")
+            hasher.combine(module.name)
+        case .target(let target, let module):
+            hasher.combine("target")
+            hasher.combine(target)
+            hasher.combine(module.name)
+        }
+    }
+    
+    public static func == (lhs: ModuleDependency, rhs: ModuleDependency) -> Bool {
+        switch (lhs, rhs) {
+        case (.module(let m1), .module(let m2)):
+            return m1.name == m2.name
+        case (.target(let t1, let m1), .target(let t2, let m2)):
+            return t1 == t2 && m1.name == m2.name
+        default:
+            return false
+        }
+    }
 }
 
 public struct ModuleNode {
     public let module: Module
-    public let dependencies: [ModuleDependency]
+    public let dependencies: [ModuleTarget: [ModuleDependency]]
     public let exports: [Module]
 
     public init(
@@ -21,13 +45,29 @@ public struct ModuleNode {
         exports: [Module] = []
     ) {
         self.module = module
-        self.dependencies = dependencies.map { .module($0) }
+        // Apply module dependencies to the main target only
+        self.dependencies = dependencies.isEmpty ? [:] : [
+            .main: dependencies.map { .module($0) }
+        ]
         self.exports = exports
     }
 
     public init(
         module: Module,
         dependencies: [ModuleDependency],
+        exports: [Module] = []
+    ) {
+        self.module = module
+        // Apply dependencies to the main target only
+        self.dependencies = dependencies.isEmpty ? [:] : [
+            .main: dependencies
+        ]
+        self.exports = exports
+    }
+
+    public init(
+        module: Module,
+        dependencies: [ModuleTarget: [ModuleDependency]],
         exports: [Module] = []
     ) {
         self.module = module
@@ -39,27 +79,58 @@ public struct ModuleNode {
 // MARK: - Dependency Helpers
 
 extension ModuleNode {
-    /// Returns all unique modules that this node depends on
+    /// Returns all unique modules that this node depends on (across all targets)
     var dependentModules: [Module] {
         var modules: [Module] = []
         var seen: Set<String> = []
         
-        for dependency in dependencies {
-            let module: Module
-            switch dependency {
-            case .module(let m):
-                module = m
-            case .target(_, let m):
-                module = m
-            }
-            
-            if !seen.contains(module.name) {
-                modules.append(module)
-                seen.insert(module.name)
+        for (_, deps) in dependencies {
+            for dependency in deps {
+                let module: Module
+                switch dependency {
+                case .module(let m):
+                    module = m
+                case .target(_, let m):
+                    module = m
+                }
+                
+                if !seen.contains(module.name) {
+                    modules.append(module)
+                    seen.insert(module.name)
+                }
             }
         }
         
         return modules
+    }
+    
+    /// Returns dependencies for a specific target, merging with default dependencies and removing duplicates
+    func dependencies(for target: ModuleTarget) -> [ModuleDependency] {
+        // Get explicit dependencies
+        let explicitDeps = dependencies[target] ?? []
+        
+        // Get default dependencies for this target
+        let defaultDeps = module.defaultDependencies[target] ?? []
+        
+        // Merge and deduplicate using Set
+        var seen = Set<ModuleDependency>()
+        var result: [ModuleDependency] = []
+        
+        // Add defaults first
+        for dep in defaultDeps {
+            if seen.insert(dep).inserted {
+                result.append(dep)
+            }
+        }
+        
+        // Then add explicit dependencies (may override or add to defaults)
+        for dep in explicitDeps {
+            if seen.insert(dep).inserted {
+                result.append(dep)
+            }
+        }
+        
+        return result
     }
     
     /// Returns the specific target name for a dependency

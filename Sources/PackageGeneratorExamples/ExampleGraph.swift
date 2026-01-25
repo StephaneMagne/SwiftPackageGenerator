@@ -33,16 +33,45 @@ public let exampleGraph: [ModuleNode] = [
     ModuleNode(
         module: .dependencyContainer,
         dependencies: [
-            .dependencyRequirements
+            .module(.dependencyRequirements)
         ],
         exports: [
             .dependencyRequirements
         ]
     ),
+    // Example: ContentClient with per-target dependencies
+    // - ContentClient (main) depends on networking
+    // - ContentClientInterface has no dependencies
     ModuleNode(
-        module: .contentClient
+        module: .contentClient,
+        dependencies: [
+            .main: [
+                // Main implementation needs networking, but interface doesn't
+                .module(.someNetworkingModule)
+            ],
+            .interface: []  // Interface has no dependencies
+        ]
     ),
     ModuleNode(
         module: .dependencyRequirements
+    ),
+    ModuleNode(
+        module: .someNetworkingModule
     )
 ]
+
+// Example showing the full power of per-target dependencies:
+public let advancedExample = ModuleNode(
+    module: .screenA,
+    dependencies: [
+        .main: [
+            .target(.interface, module: .contentClient),  // Impl depends on its own interface
+            .module(.screenB),
+            .module(.dependencyContainer)
+        ],
+        .interface: [
+            // Interface only depends on data models
+            .target(.interface, module: .contentClient),  // Impl depends on its own interface
+        ]
+    ]
+)

@@ -9,7 +9,7 @@ import PackageGeneratorCore
 
 extension Module {
     // MARK: - Screens
-    
+
     public static var screenA: Module {
         Module(
             name: "ScreenA",
@@ -27,7 +27,7 @@ extension Module {
     }
 
     // MARK: - Coordinators
-    
+
     public static var tabCoordinator: Module {
         Module(
             name: "TabCoordinator",
@@ -37,7 +37,7 @@ extension Module {
     }
 
     // MARK: - Utilities
-    
+
     public static var dependencyContainer: Module {
         Module(
             name: "DependencyContainer",
@@ -47,18 +47,30 @@ extension Module {
     }
 
     // MARK: - Macros
-    
+
+    // Convenience: Using type-based initialization with default config
     public static var dependencyRequirements: Module {
         Module(
-            name: "DependencyRequirements",
+            name: "DependencyRequirementsMacros",
             type: .macro,
-            productType: .macro,
+            hasTests: false
+        )
+    }
+
+    // Explicit: Using dedicated macro initializer with custom config
+    public static var copyableMacros: Module {
+        Module(
+            macroName: "CopyableMacros",
+            macroConfig: MacroConfiguration(
+                swiftSyntaxVersion: "509.0.0",
+                requiresCompilerPluginSupport: true
+            ),
             hasTests: false
         )
     }
 
     // MARK: - Clients
-    
+
     public static var contentClient: Module {
         Module(
             name: "ContentClient",
@@ -66,4 +78,13 @@ extension Module {
             hasTests: true
         )
     }
+
+    public static var someNetworkingModule: Module {
+        Module(
+            name: "SomeNetworkingModule",
+            type: .client,
+            hasTests: true
+        )
+    }
+
 }
