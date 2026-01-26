@@ -18,8 +18,8 @@ extension ModuleNode {
             .map { $0.rendered }
             .joined(separator: ", ")
         
-        // Get the modules this root depends on (from the ModuleNode dependencies)
-        let dependentModules = self.dependentModules
+        // Get the modules this root depends on (from the ModuleNode dependencies, including global)
+        let dependentModules = self.dependentModules(using: configuration)
         
         // Look up the full ModuleNode for each dependency to get all targets
         let dependentNodes = dependentModules.compactMap { depModule -> ModuleNode? in

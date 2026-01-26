@@ -35,7 +35,7 @@ extension ModuleNode {
         let productsSection = renderProductsSection()
         
         // Render targets
-        let targets = renderTargets()
+        let targets = renderTargets(using: configuration)
         
         return """
         // swift-tools-version: \(configuration.swiftToolsVersion)
@@ -120,7 +120,7 @@ extension ModuleNode {
         }
         
         // Local module dependencies (exclude self-dependencies)
-        let externalModules = dependentModules.filter { $0.name != module.name }
+        let externalModules = dependentModules(using: configuration).filter { $0.name != module.name }
         for dependency in externalModules {
             let depPath = dependency.resolvedPath(using: configuration)
             let relativePath = PathUtilities.relativePath(from: modulePath, to: depPath)
@@ -137,9 +137,9 @@ extension ModuleNode {
         """
     }
     
-    private func renderTargets() -> String {
+    private func renderTargets(using configuration: PackageConfiguration) -> String {
         let targetLines = module.targets.enumerated().map { index, target -> String in
-            renderTarget(target, isLast: index == module.targets.count - 1)
+            renderTarget(target, isLast: index == module.targets.count - 1, using: configuration)
         }
         
         let testTarget = module.hasTests ? ",\n        \(renderTestTarget())" : ""
@@ -147,7 +147,7 @@ extension ModuleNode {
         return targetLines.joined(separator: ",\n        ") + testTarget
     }
     
-    private func renderTarget(_ target: ModuleTarget, isLast: Bool) -> String {
+    private func renderTarget(_ target: ModuleTarget, isLast: Bool, using configuration: PackageConfiguration) -> String {
         let targetName = module.targetName(for: target)
         
         // Macro implementation targets need special handling
@@ -156,7 +156,7 @@ extension ModuleNode {
         }
         
         // Get dependencies for this specific target (includes defaults + explicit, deduplicated)
-        let targetDeps = renderTargetDependencies(for: target)
+        let targetDeps = renderTargetDependencies(for: target, using: configuration)
         
         let depsSection = targetDeps.isEmpty ? "" : """
         
@@ -184,9 +184,9 @@ extension ModuleNode {
         """
     }
     
-    private func renderTargetDependencies(for target: ModuleTarget) -> String {
-        // Get dependencies for this target (already includes defaults and deduplication)
-        let targetDeps = dependencies(for: target)
+    private func renderTargetDependencies(for target: ModuleTarget, using configuration: PackageConfiguration) -> String {
+        // Get dependencies for this target (includes global, defaults, and explicit, deduplicated)
+        let targetDeps = dependencies(for: target, using: configuration)
         
         let deps = targetDeps
             .map { dependency -> String in

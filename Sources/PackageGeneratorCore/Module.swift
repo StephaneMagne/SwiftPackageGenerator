@@ -43,6 +43,22 @@ public enum ModuleTarget: Hashable {
     case custom(String)
 }
 
+// MARK: - Module Target Type
+
+public struct ModuleTargetType: Hashable {
+    public let type: ModuleType
+    public let target: ModuleTarget
+
+    public init(type: ModuleType, target: ModuleTarget) {
+        self.type = type
+        self.target = target
+    }
+
+    public static func type(_ type: ModuleType, target: ModuleTarget) -> ModuleTargetType {
+        ModuleTargetType(type: type, target: target)
+    }
+}
+
 // MARK: - External Dependency
 
 public struct ExternalDependency {

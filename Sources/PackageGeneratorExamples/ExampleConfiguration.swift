@@ -24,5 +24,16 @@ public let exampleConfiguration = PackageConfiguration(
             .screen: "Modules/Screens",
             .utility: "Modules/Utilities"
         ]
-    )
+    ),
+    globalDependencies: [
+        .type(.coordinator, target: .main): [
+            .module(.dependencyContainer)
+        ],
+        .type(.screen, target: .main): [
+            .module(.dependencyContainer)
+        ],
+        .type(.screen, target: .views): [
+            .module(.copyableMacros)
+        ]
+    ]
 )

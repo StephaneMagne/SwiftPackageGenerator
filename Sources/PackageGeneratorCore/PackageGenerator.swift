@@ -40,7 +40,7 @@ public struct PackageGenerator {
     }
     
     private func validate() throws {
-        let validator = GraphValidator(graph: graph)
+        let validator = GraphValidator(graph: graph, configuration: configuration)
         try validator.validate()
     }
     

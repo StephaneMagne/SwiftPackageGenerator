@@ -164,7 +164,7 @@ public struct GraphRenderer {
         
         for target in node.module.targets {
             let sourceId = nodeId(module: resolvedSourceName, target: target)
-            let dependencies = node.dependencies(for: target)
+            let dependencies = node.dependencies(for: target, using: configuration)
             
             for dependency in dependencies {
                 // Skip internal dependencies (within the same module)
@@ -221,7 +221,7 @@ public struct GraphRenderer {
         var seenModules = Set<String>()
         
         for target in node.module.targets {
-            let dependencies = node.dependencies(for: target)
+            let dependencies = node.dependencies(for: target, using: configuration)
             
             for dependency in dependencies {
                 // Skip internal dependencies

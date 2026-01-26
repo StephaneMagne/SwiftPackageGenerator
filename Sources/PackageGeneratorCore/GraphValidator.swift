@@ -7,6 +7,7 @@
 
 struct GraphValidator {
     let graph: [ModuleNode]
+    let configuration: PackageConfiguration
     
     func validate() throws {
         try validateAllModulesExist()
@@ -19,8 +20,9 @@ struct GraphValidator {
         let allModuleNames = Set(graph.map { $0.module.name })
         
         for node in graph {
-            // Check dependencies across all targets
-            for (_, deps) in node.dependencies {
+            // Check all resolved dependencies (includes global dependencies)
+            for target in node.module.targets {
+                let deps = node.dependencies(for: target, using: configuration)
                 for dependency in deps {
                     let dependencyModule: Module
                     switch dependency {
@@ -53,7 +55,7 @@ struct GraphValidator {
     
     private func validateExportsAreInDependencies() throws {
         for node in graph {
-            let dependencyModuleNames = Set(node.dependentModules.map { $0.name })
+            let dependencyModuleNames = Set(node.dependentModules(using: configuration).map { $0.name })
             
             for export in node.exports {
                 guard dependencyModuleNames.contains(export.name) else {
@@ -89,7 +91,7 @@ struct GraphValidator {
         for node in graph {
             for target in node.module.targets {
                 let targetKey = targetNodeKey(module: node.module.name, target: target)
-                let deps = node.dependencies(for: target)
+                let deps = node.dependencies(for: target, using: configuration)
                 
                 var dependencyKeys = Set<String>()
                 for dep in deps {

@@ -79,7 +79,34 @@ public struct ModuleNode {
 // MARK: - Dependency Helpers
 
 extension ModuleNode {
-    /// Returns all unique modules that this node depends on (across all targets)
+    /// Returns all unique modules that this node depends on (across all targets), including global dependencies.
+    func dependentModules(using configuration: PackageConfiguration) -> [Module] {
+        var modules: [Module] = []
+        var seen: Set<String> = []
+        
+        for target in module.targets {
+            let deps = dependencies(for: target, using: configuration)
+            for dependency in deps {
+                let depModule: Module
+                switch dependency {
+                case .module(let m):
+                    depModule = m
+                case .target(_, let m):
+                    depModule = m
+                }
+                
+                if !seen.contains(depModule.name) {
+                    modules.append(depModule)
+                    seen.insert(depModule.name)
+                }
+            }
+        }
+        
+        return modules
+    }
+    
+    /// Returns all unique modules that this node depends on (across all targets).
+    /// Note: Prefer `dependentModules(using:)` to include global dependencies from configuration.
     var dependentModules: [Module] {
         var modules: [Module] = []
         var seen: Set<String> = []
@@ -104,7 +131,54 @@ extension ModuleNode {
         return modules
     }
     
-    /// Returns dependencies for a specific target, merging with default dependencies and removing duplicates
+    /// Returns dependencies for a specific target, merging global, module-type defaults, and explicit dependencies.
+    /// Merge order: global (from configuration) → module-type defaults → explicit node dependencies
+    func dependencies(for target: ModuleTarget, using configuration: PackageConfiguration) -> [ModuleDependency] {
+        // Get explicit dependencies
+        let explicitDeps = dependencies[target] ?? []
+        
+        // Get default dependencies for this target (internal, e.g., main -> views)
+        let defaultDeps = module.defaultDependencies[target] ?? []
+        
+        // Get global dependencies from configuration (based on module type + target)
+        let globalDeps: [ModuleDependency]
+        if case .type(let moduleType, _, _) = module.location {
+            let key = ModuleTargetType(type: moduleType, target: target)
+            globalDeps = configuration.globalDependencies[key] ?? []
+        } else {
+            globalDeps = []
+        }
+        
+        // Merge and deduplicate: global → defaults → explicit
+        var seen = Set<ModuleDependency>()
+        var result: [ModuleDependency] = []
+        
+        // Add global dependencies first
+        for dep in globalDeps {
+            if seen.insert(dep).inserted {
+                result.append(dep)
+            }
+        }
+        
+        // Add module-type defaults
+        for dep in defaultDeps {
+            if seen.insert(dep).inserted {
+                result.append(dep)
+            }
+        }
+        
+        // Then add explicit dependencies
+        for dep in explicitDeps {
+            if seen.insert(dep).inserted {
+                result.append(dep)
+            }
+        }
+        
+        return result
+    }
+    
+    /// Returns dependencies for a specific target, merging with default dependencies and removing duplicates.
+    /// Note: Prefer `dependencies(for:using:)` to include global dependencies from configuration.
     func dependencies(for target: ModuleTarget) -> [ModuleDependency] {
         // Get explicit dependencies
         let explicitDeps = dependencies[target] ?? []
