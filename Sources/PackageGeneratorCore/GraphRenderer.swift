@@ -34,9 +34,12 @@ public struct GraphRenderer {
         
         lines.append("digraph ModuleDependencies {")
         lines.append("    rankdir=TB;")
-        lines.append("    ranksep=1.0;")
+        lines.append("    ranksep=1.6;")
         lines.append("    nodesep=0.8;")
         lines.append("    pad=0.5;")
+        lines.append("    compound=true;")
+        lines.append("    concentrate=true;")
+        lines.append("    splines=spline;")
         lines.append("    node [shape=box, style=filled, fontname=\"Helvetica\"];")
         lines.append("    edge [fontname=\"Helvetica\", fontsize=10];")
         lines.append("")
@@ -74,9 +77,12 @@ public struct GraphRenderer {
         
         lines.append("digraph ModuleDependencies {")
         lines.append("    rankdir=TB;")
-        lines.append("    ranksep=1.0;")
+        lines.append("    ranksep=1.6;")
         lines.append("    nodesep=0.8;")
         lines.append("    pad=0.5;")
+        lines.append("    compound=true;")
+        lines.append("    concentrate=true;")
+        lines.append("    splines=spline;")
         lines.append("    node [shape=box, style=filled, fontname=\"Helvetica\"];")
         lines.append("")
         
@@ -132,17 +138,17 @@ public struct GraphRenderer {
     private func renderModuleTargets(for node: ModuleNode) -> [String] {
         var lines: [String] = []
         let nodeColor = targetColor(for: node.module)
+        let resolvedName = node.module.resolvedName(using: configuration)
         
         // Create a subgraph for this module's targets
-        lines.append("subgraph cluster_\(sanitize(node.module.name)) {")
-        lines.append("    label=\"\(node.module.name)\";")
+        lines.append("subgraph cluster_\(sanitize(resolvedName)) {")
+        lines.append("    label=\"\(resolvedName)\";")
         lines.append("    style=rounded;")
         lines.append("    color=\"#666666\";")
         lines.append("")
         
         for target in node.module.targets {
-            let targetName = node.module.targetName(for: target)
-            let nodeId = nodeId(module: node.module.name, target: target)
+            let nodeId = nodeId(module: resolvedName, target: target)
             let label = targetLabel(for: target)
             lines.append("    \(nodeId) [label=\"\(label)\", fillcolor=\"\(nodeColor)\"];")
         }
@@ -154,25 +160,27 @@ public struct GraphRenderer {
     
     private func renderEdges(for node: ModuleNode) -> [String] {
         var lines: [String] = []
+        let resolvedSourceName = node.module.resolvedName(using: configuration)
         
         for target in node.module.targets {
-            let sourceId = nodeId(module: node.module.name, target: target)
+            let sourceId = nodeId(module: resolvedSourceName, target: target)
             let dependencies = node.dependencies(for: target)
             
             for dependency in dependencies {
-                let targetId: String
-                let edgeStyle: String
+                // Skip internal dependencies (within the same module)
+                guard !isInternalDependency(dependency, in: node) else { continue }
                 
+                let targetId: String
                 switch dependency {
                 case .module(let depModule):
-                    targetId = nodeId(module: depModule.name, target: .main)
-                    edgeStyle = isInternalDependency(dependency, in: node) ? "dashed" : "solid"
+                    let resolvedDepName = depModule.resolvedName(using: configuration)
+                    targetId = nodeId(module: resolvedDepName, target: .main)
                 case .target(let depTarget, let depModule):
-                    targetId = nodeId(module: depModule.name, target: depTarget)
-                    edgeStyle = isInternalDependency(dependency, in: node) ? "dashed" : "solid"
+                    let resolvedDepName = depModule.resolvedName(using: configuration)
+                    targetId = nodeId(module: resolvedDepName, target: depTarget)
                 }
                 
-                lines.append("    \(sourceId) -> \(targetId) [style=\(edgeStyle)];")
+                lines.append("    \(sourceId) -> \(targetId);")
             }
         }
         
@@ -193,9 +201,10 @@ public struct GraphRenderer {
         lines.append("")
         
         for node in nodes.sorted(by: { $0.module.name < $1.module.name }) {
-            let nodeId = sanitize(node.module.name)
+            let resolvedName = node.module.resolvedName(using: configuration)
+            let nodeId = sanitize(resolvedName)
             let nodeColor = targetColor(for: node.module)
-            lines.append("        \(nodeId) [label=\"\(node.module.name)\", fillcolor=\"\(nodeColor)\"];")
+            lines.append("        \(nodeId) [label=\"\(resolvedName)\", fillcolor=\"\(nodeColor)\"];")
         }
         
         lines.append("    }")
@@ -205,7 +214,8 @@ public struct GraphRenderer {
     
     private func renderModuleLevelEdges(for node: ModuleNode) -> [String] {
         var lines: [String] = []
-        let sourceId = sanitize(node.module.name)
+        let resolvedSourceName = node.module.resolvedName(using: configuration)
+        let sourceId = sanitize(resolvedSourceName)
         
         // Collect unique module dependencies (not internal)
         var seenModules = Set<String>()
@@ -217,17 +227,18 @@ public struct GraphRenderer {
                 // Skip internal dependencies
                 guard !isInternalDependency(dependency, in: node) else { continue }
                 
-                let depModuleName: String
+                let depModule: Module
                 switch dependency {
-                case .module(let depModule):
-                    depModuleName = depModule.name
-                case .target(_, let depModule):
-                    depModuleName = depModule.name
+                case .module(let m):
+                    depModule = m
+                case .target(_, let m):
+                    depModule = m
                 }
                 
-                if !seenModules.contains(depModuleName) {
-                    seenModules.insert(depModuleName)
-                    let targetId = sanitize(depModuleName)
+                let resolvedDepName = depModule.resolvedName(using: configuration)
+                if !seenModules.contains(resolvedDepName) {
+                    seenModules.insert(resolvedDepName)
+                    let targetId = sanitize(resolvedDepName)
                     lines.append("    \(sourceId) -> \(targetId);")
                 }
             }
