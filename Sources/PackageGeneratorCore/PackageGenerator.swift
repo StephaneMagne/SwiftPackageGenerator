@@ -149,6 +149,15 @@ public struct PackageGenerator {
                 name: targetName,
                 at: targetPath
             )
+            
+            // Create Support/ModuleLogger.swift for non-macro-implementation targets
+            if target != .macroImplementation {
+                try createModuleLoggerFile(
+                    for: node.module,
+                    target: target,
+                    at: targetPath
+                )
+            }
         }
         
         // Create Tests structure if the module has a tests target
@@ -227,6 +236,57 @@ public struct PackageGenerator {
         """
         
         let filePath = "\(path)/\(name)Tests.swift"
+        try content.write(
+            toFile: filePath,
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+    
+    private func createModuleLoggerFile(for module: Module, target: ModuleTarget, at targetPath: String) throws {
+        let supportPath = "\(targetPath)/Support"
+        
+        try FileManager.default.createDirectory(
+            atPath: supportPath,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        
+        let targetName = module.targetName(for: target)
+        let category: String
+        
+        // Build category based on module type
+        if case .type(let type, _, _) = module.location {
+            let typeName: String
+            switch type {
+            case .client: typeName = "Client"
+            case .coordinator: typeName = "Coordinator"
+            case .macro: typeName = "Macro"
+            case .screen: typeName = "Screen"
+            case .utility: typeName = "Utility"
+            case .root: typeName = "Root"
+            }
+            category = "\(typeName).\(targetName)"
+        } else {
+            category = targetName
+        }
+        
+        let content = """
+        //
+        //  ModuleLogger.swift
+        //  \(targetName)
+        //
+        
+        import OSLog
+        
+        private let logger = Logger(
+            subsystem: Bundle.main.bundleIdentifier ?? "\(configuration.appName)",
+            category: "\(category)"
+        )
+        
+        """
+        
+        let filePath = "\(supportPath)/ModuleLogger.swift"
         try content.write(
             toFile: filePath,
             atomically: true,

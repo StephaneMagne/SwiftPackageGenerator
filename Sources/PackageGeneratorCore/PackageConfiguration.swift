@@ -41,6 +41,7 @@ public struct ModuleDirectoryConfiguration {
 }
 
 public struct PackageConfiguration {
+    public let appName: String
     public let swiftToolsVersion: String
     public let supportedPlatforms: [Platform]
     public let swiftSettings: [String]
@@ -48,12 +49,14 @@ public struct PackageConfiguration {
     public let globalDependencies: [ModuleTargetType: [ModuleDependency]]
 
     public init(
+        appName: String,
         swiftToolsVersion: String = "5.10",
         supportedPlatforms: [Platform],
         swiftSettings: [String],
         moduleDirectoryConfiguration: ModuleDirectoryConfiguration,
         globalDependencies: [ModuleTargetType: [ModuleDependency]] = [:]
     ) {
+        self.appName = appName
         self.swiftToolsVersion = swiftToolsVersion
         self.supportedPlatforms = supportedPlatforms
         self.swiftSettings = swiftSettings
