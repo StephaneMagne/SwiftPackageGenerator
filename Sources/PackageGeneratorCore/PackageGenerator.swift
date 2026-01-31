@@ -67,10 +67,6 @@ public struct PackageGenerator {
         // Only create subdirectories and files if this is a completely new module
         if isNewModule {
             try createSourcesStructure(for: node, at: fullPath)
-            
-            if node.module.hasTests {
-                try createTestsStructure(for: node, at: fullPath)
-            }
         }
         
         // Always regenerate Package.swift
@@ -138,8 +134,8 @@ public struct PackageGenerator {
     }
     
     private func createSourcesStructure(for node: ModuleNode, at modulePath: String) throws {
-        // Create a directory and placeholder file for each target
-        for target in node.module.targets {
+        // Create a directory and placeholder file for each non-test target
+        for target in node.module.targets where target != .tests {
             let targetName = node.module.targetName(for: target)
             let targetPath = "\(modulePath)/Sources/\(targetName)"
             
@@ -153,6 +149,11 @@ public struct PackageGenerator {
                 name: targetName,
                 at: targetPath
             )
+        }
+        
+        // Create Tests structure if the module has a tests target
+        if node.module.hasTests {
+            try createTestsStructure(for: node, at: modulePath)
         }
     }
     

@@ -84,8 +84,8 @@ extension ModuleNode {
         // No products for .none type
         guard module.productType != .none else { return "" }
 
-        // For macros, only expose the client target (.main), not the implementation
-        let productTargets = module.targets.filter { $0 != .macroImplementation }
+        // Products exclude macroImplementation and tests
+        let productTargets = module.targets.filter { $0 != .macroImplementation && $0 != .tests }
         
         let productLines = productTargets.map { target -> String in
             let targetName = module.targetName(for: target)
@@ -142,9 +142,7 @@ extension ModuleNode {
             renderTarget(target, isLast: index == module.targets.count - 1, using: configuration)
         }
         
-        let testTarget = module.hasTests ? ",\n        \(renderTestTarget())" : ""
-        
-        return targetLines.joined(separator: ",\n        ") + testTarget
+        return targetLines.joined(separator: ",\n        ")
     }
     
     private func renderTarget(_ target: ModuleTarget, isLast: Bool, using configuration: PackageConfiguration) -> String {
@@ -153,6 +151,11 @@ extension ModuleNode {
         // Macro implementation targets need special handling
         if target == .macroImplementation {
             return renderMacroImplementationTarget(targetName: targetName)
+        }
+        
+        // Test targets use .testTarget()
+        if target == .tests {
+            return renderTestTarget(using: configuration)
         }
         
         // Get dependencies for this specific target (includes defaults + explicit, deduplicated)
@@ -227,21 +230,20 @@ extension ModuleNode {
         }
     }
     
-    private func renderTestTarget() -> String {
-        // Test target depends on all module targets (internal dependency, use string shorthand)
-        // Exclude macro implementation from tests
-        let testableTargets = module.targets.filter { $0 != .macroImplementation }
-        let testDeps = testableTargets
-            .map { module.targetName(for: $0) }
-            .map { "                \"\($0)\"" }
-            .joined(separator: ",\n")
+    private func renderTestTarget(using configuration: PackageConfiguration) -> String {
+        let targetName = module.targetName(for: .tests)
+        
+        // Get dependencies for the test target (includes global, defaults, and explicit)
+        let targetDeps = renderTargetDependencies(for: .tests, using: configuration)
+        
+        let depsSection = targetDeps.isEmpty ? "" : """
+        ,
+                    \(targetDeps)
+        """
         
         return """
         .testTarget(
-                    name: "\(module.name)Tests",
-                    dependencies: [
-        \(testDeps)
-                    ]
+                    name: "\(targetName)"\(depsSection)
                 )
         """
     }

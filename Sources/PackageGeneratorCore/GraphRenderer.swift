@@ -271,6 +271,8 @@ public struct GraphRenderer {
             targetSuffix = "impl"
         case .custom(let name):
             targetSuffix = sanitize(name)
+        case .tests:
+            targetSuffix = "tests"
         }
         return "\(sanitize(module))_\(targetSuffix)"
     }
@@ -287,6 +289,8 @@ public struct GraphRenderer {
             return "Implementation"
         case .custom(let name):
             return name
+        case .tests:
+            return "Tests"
         }
     }
     

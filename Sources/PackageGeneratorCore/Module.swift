@@ -41,6 +41,7 @@ public enum ModuleTarget: Hashable {
     case views
     case macroImplementation
     case custom(String)
+    case tests
 }
 
 // MARK: - Module Target Type
@@ -95,10 +96,14 @@ public struct Module: Hashable {
     public let targets: [ModuleTarget]
     public let location: ModuleLocation
     public let productType: ProductType
-    public let hasTests: Bool
     public let externalDependencies: [ExternalDependency]
     public let supportedPlatforms: [Platform]
     public let macroConfig: MacroConfiguration?
+    
+    /// Whether this module has a test target
+    public var hasTests: Bool {
+        targets.contains(.tests)
+    }
 
     public init(
         name: String,
@@ -110,10 +115,13 @@ public struct Module: Hashable {
         supportedPlatforms: [Platform] = []
     ) {
         self.name = name
-        self.targets = targets ?? [.main]
+        var resolvedTargets = targets ?? [.main]
+        if hasTests && !resolvedTargets.contains(.tests) {
+            resolvedTargets.append(.tests)
+        }
+        self.targets = resolvedTargets
         self.location = .path(path)
         self.productType = productType
-        self.hasTests = hasTests
         self.externalDependencies = externalDependencies
         self.supportedPlatforms = supportedPlatforms
         self.macroConfig = nil
@@ -131,10 +139,13 @@ public struct Module: Hashable {
         supportedPlatforms: [Platform] = []
     ) {
         self.name = name
-        self.targets = targets ?? type.defaultTargets
+        var resolvedTargets = targets ?? type.defaultTargets
+        if hasTests && !resolvedTargets.contains(.tests) {
+            resolvedTargets.append(.tests)
+        }
+        self.targets = resolvedTargets
         self.location = .type(type, path: path, subpath: subpath)
         self.productType = productType
-        self.hasTests = hasTests
         self.macroConfig = type == .macro ? MacroConfiguration() : nil
         self.supportedPlatforms = supportedPlatforms
 
@@ -161,10 +172,13 @@ public struct Module: Hashable {
         supportedPlatforms: [Platform] = []
     ) {
         self.name = macroName
-        self.targets = [.main, .macroImplementation]
+        var resolvedTargets: [ModuleTarget] = [.main, .macroImplementation]
+        if hasTests {
+            resolvedTargets.append(.tests)
+        }
+        self.targets = resolvedTargets
         self.location = .type(.macro, path: path, subpath: subpath)
         self.productType = .macro
-        self.hasTests = hasTests
         self.macroConfig = macroConfig
         self.supportedPlatforms = supportedPlatforms
 
@@ -269,6 +283,8 @@ extension Module {
             return "\(name)Implementation"
         case .custom(let customName):
             return customName
+        case .tests:
+            return "\(name)Tests"
         }
     }
     
@@ -279,32 +295,32 @@ extension Module {
     
     /// Returns default dependencies based on module type and targets
     public var defaultDependencies: [ModuleTarget: [ModuleDependency]] {
-        guard case .type(let type, _, _) = location else { return [:] }
-        guard targets == type.defaultTargets else { return [:] }
+        var defaults: [ModuleTarget: [ModuleDependency]] = [:]
+        
+        // Tests always depend on main (when tests target exists)
+        if targets.contains(.tests) {
+            defaults[.tests] = [.module(self)]
+        }
+        
+        // Type-specific defaults only apply when using default targets for that type
+        // (excluding .tests which is orthogonal)
+        guard case .type(let type, _, _) = location else { return defaults }
+        
+        let nonTestTargets = targets.filter { $0 != .tests }
+        guard nonTestTargets == type.defaultTargets else { return defaults }
 
         switch type {
         case .utility, .root:
-            return [:]
+            break
         case .client:
-            return [
-                .main: [
-                    .target(.interface, module: self)
-                ]
-            ]
-        case .coordinator,
-             .screen:
-            return [
-                .main: [
-                    .target(.views, module: self)
-                ]
-            ]
+            defaults[.main] = [.target(.interface, module: self)]
+        case .coordinator, .screen:
+            defaults[.main] = [.target(.views, module: self)]
         case .macro:
-            return [
-                .main: [
-                    .target(.macroImplementation, module: self)
-                ]
-            ]
+            defaults[.main] = [.target(.macroImplementation, module: self)]
         }
+        
+        return defaults
     }
 }
 

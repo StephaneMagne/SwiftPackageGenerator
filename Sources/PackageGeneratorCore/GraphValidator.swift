@@ -137,6 +137,8 @@ struct GraphValidator {
             targetName = name
         case .macroImplementation:
             targetName = "implementation"
+        case .tests:
+            targetName = "tests"
         }
         return "\(module).\(targetName)"
     }
