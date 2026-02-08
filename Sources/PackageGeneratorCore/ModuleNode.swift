@@ -218,3 +218,55 @@ extension ModuleNode {
         }
     }
 }
+
+// MARK: - First Class Module Detection
+
+extension ModuleNode {
+    /// Whether this node depends on a specific first-class module (by name),
+    /// checking both explicit node dependencies and global dependencies from configuration.
+    func dependsOn(firstClassModule firstClass: Module, using configuration: PackageConfiguration? = nil) -> Bool {
+        // Check explicit node dependencies
+        for (_, deps) in dependencies {
+            for dep in deps {
+                switch dep {
+                case .module(let m) where m.name == firstClass.name:
+                    return true
+                case .target(_, let m) where m.name == firstClass.name:
+                    return true
+                default:
+                    continue
+                }
+            }
+        }
+
+        // Check global dependencies from configuration (only for matching module type + targets)
+        if let configuration, case .type(let moduleType, _, _) = module.location {
+            for target in module.targets {
+                let key = ModuleTargetType(type: moduleType, target: target)
+                guard let deps = configuration.globalDependencies[key] else { continue }
+                for dep in deps {
+                    switch dep {
+                    case .module(let m) where m.name == firstClass.name:
+                        return true
+                    case .target(_, let m) where m.name == firstClass.name:
+                        return true
+                    default:
+                        continue
+                    }
+                }
+            }
+        }
+
+        return false
+    }
+
+    /// Whether this node depends on `ModularDependencyContainer`.
+    func usesModularDependencyContainer(using configuration: PackageConfiguration? = nil) -> Bool {
+        dependsOn(firstClassModule: .modularDependencyContainer, using: configuration)
+    }
+
+    /// Whether this node depends on `ModularNavigation`.
+    func usesModularNavigation(using configuration: PackageConfiguration? = nil) -> Bool {
+        dependsOn(firstClassModule: .modularNavigation, using: configuration)
+    }
+}

@@ -8,6 +8,7 @@
 import PackageGeneratorCore
 
 public let exampleConfiguration = PackageConfiguration(
+    appName: "ExampleApp",
     supportedPlatforms: [
         .iOS(majorVersion: 17),
         .macOS(majorVersion: 15)

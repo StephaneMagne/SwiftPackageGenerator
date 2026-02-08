@@ -99,7 +99,8 @@ public struct Module: Hashable {
     public let externalDependencies: [ExternalDependency]
     public let supportedPlatforms: [Platform]
     public let macroConfig: MacroConfiguration?
-    
+    public let usesNamespace: Bool
+
     /// Whether this module has a test target
     public var hasTests: Bool {
         targets.contains(.tests)
@@ -110,6 +111,7 @@ public struct Module: Hashable {
         path: String,
         targets: [ModuleTarget]? = nil,
         productType: ProductType = .library,
+        usesNamespace: Bool = true,
         hasTests: Bool = true,
         externalDependencies: [ExternalDependency] = [],
         supportedPlatforms: [Platform] = []
@@ -125,6 +127,7 @@ public struct Module: Hashable {
         self.externalDependencies = externalDependencies
         self.supportedPlatforms = supportedPlatforms
         self.macroConfig = nil
+        self.usesNamespace = usesNamespace
     }
 
     public init(
@@ -134,6 +137,7 @@ public struct Module: Hashable {
         subpath: String? = nil,
         targets: [ModuleTarget]? = nil,
         productType: ProductType = .library,
+        usesNamespace: Bool = true,
         hasTests: Bool = true,
         externalDependencies: [ExternalDependency] = [],
         supportedPlatforms: [Platform] = []
@@ -148,6 +152,7 @@ public struct Module: Hashable {
         self.productType = productType
         self.macroConfig = type == .macro ? MacroConfiguration() : nil
         self.supportedPlatforms = supportedPlatforms
+        self.usesNamespace = usesNamespace
 
         // Auto-inject swift-syntax for macros
         if type == .macro && externalDependencies.isEmpty {
@@ -181,6 +186,7 @@ public struct Module: Hashable {
         self.productType = .macro
         self.macroConfig = macroConfig
         self.supportedPlatforms = supportedPlatforms
+        self.usesNamespace = false
 
         // Auto-inject swift-syntax dependency
         self.externalDependencies = [
