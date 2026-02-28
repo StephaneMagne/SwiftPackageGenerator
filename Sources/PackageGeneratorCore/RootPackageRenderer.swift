@@ -92,7 +92,7 @@ extension ModuleNode {
         var lines: [String] = []
         
         // Render in consistent order
-        let order = ["Utilities", "Clients", "Coordinators", "Screens", "Macros", "Other"]
+        let order = ["Utilities", "Clients", "Components", "Coordinators", "Screens", "Macros", "Other"]
         
         for category in order {
             guard let nodes = grouped[category], !nodes.isEmpty else { continue }
@@ -128,7 +128,7 @@ extension ModuleNode {
         var lines: [String] = []
         
         // Render in consistent order
-        let order: [ModuleType] = [.utility, .client, .coordinator, .screen, .macro]
+        let order: [ModuleType] = [.utility, .client, .component, .coordinator, .screen, .macro]
         
         for type in order {
             guard let nodes = groupedModules[type], !nodes.isEmpty else { continue }
@@ -159,6 +159,8 @@ extension ModuleNode {
         switch type {
         case .client:
             return "Clients"
+        case .component:
+            return "Components"
         case .coordinator:
             return "Coordinators"
         case .macro:

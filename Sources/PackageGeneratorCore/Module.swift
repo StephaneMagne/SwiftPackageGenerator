@@ -9,6 +9,7 @@
 
 public enum ModuleType {
     case client
+    case component
     case coordinator
     case macro
     case screen
@@ -320,7 +321,7 @@ extension Module {
             break
         case .client:
             defaults[.main] = [.target(.interface, module: self)]
-        case .coordinator, .screen:
+        case .component, .coordinator, .screen:
             defaults[.main] = [.target(.views, module: self)]
         case .macro:
             defaults[.main] = [.target(.macroImplementation, module: self)]
@@ -337,7 +338,7 @@ extension ModuleType {
         switch self {
         case .client:
             return [.main, .interface]
-        case .coordinator, .screen:
+        case .component, .coordinator, .screen:
             return [.main, .views]
         case .macro:
             return [.main, .macroImplementation]
@@ -351,6 +352,7 @@ extension ModuleType {
         case .macro:
             return [.macOS(majorVersion: 10, minorVersion: 15)] // Macros require macOS(.v10_15)
         case .client,
+             .component,
              .coordinator,
              .screen,
              .root,

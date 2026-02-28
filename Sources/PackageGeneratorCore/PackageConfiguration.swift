@@ -18,6 +18,7 @@ public struct ModuleDirectoryConfiguration {
         // Generate default directories as subdirectories of root
         var defaults: [ModuleType: String] = [
             .client: "\(rootPath)/Clients",
+            .component: "\(rootPath)/Components",
             .coordinator: "\(rootPath)/Coordinators",
             .macro: "\(rootPath)/Macros",
             .screen: "\(rootPath)/Screens",

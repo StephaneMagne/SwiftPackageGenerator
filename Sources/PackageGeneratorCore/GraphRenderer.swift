@@ -53,7 +53,7 @@ public struct GraphRenderer {
         }
         
         // Render clusters
-        let typeOrder: [ModuleType] = [.utility, .client, .screen, .coordinator, .macro, .root]
+        let typeOrder: [ModuleType] = [.utility, .client, .component, .screen, .coordinator, .macro, .root]
         for type in typeOrder {
             guard let nodes = groupedNodes[type], !nodes.isEmpty else { continue }
             lines.append(contentsOf: renderCluster(for: type, nodes: nodes))
@@ -95,7 +95,7 @@ public struct GraphRenderer {
         }
         
         // Render clusters with single node per module
-        let typeOrder: [ModuleType] = [.utility, .client, .screen, .coordinator, .macro, .root]
+        let typeOrder: [ModuleType] = [.utility, .client, .component, .screen, .coordinator, .macro, .root]
         for type in typeOrder {
             guard let nodes = groupedNodes[type], !nodes.isEmpty else { continue }
             lines.append(contentsOf: renderModuleLevelCluster(for: type, nodes: nodes))
@@ -303,6 +303,7 @@ public struct GraphRenderer {
     private func clusterName(for type: ModuleType) -> String {
         switch type {
         case .client: return "clients"
+        case .component: return "components"
         case .coordinator: return "coordinators"
         case .macro: return "macros"
         case .screen: return "screens"
@@ -314,6 +315,7 @@ public struct GraphRenderer {
     private func typeLabel(for type: ModuleType) -> String {
         switch type {
         case .client: return "Clients"
+        case .component: return "Components"
         case .coordinator: return "Coordinators"
         case .macro: return "Macros"
         case .screen: return "Screens"
@@ -325,6 +327,7 @@ public struct GraphRenderer {
     private func clusterColor(for type: ModuleType) -> String {
         switch type {
         case .client: return "#e8f4f8"
+        case .component: return "#f0f4e8"
         case .coordinator: return "#f8e8f4"
         case .macro: return "#f4f8e8"
         case .screen: return "#f8f4e8"
@@ -332,12 +335,13 @@ public struct GraphRenderer {
         case .root: return "#f0f0f0"
         }
     }
-    
+
     private func targetColor(for module: Module) -> String {
         // Slightly darker than cluster color for contrast
         if case .type(let type, _, _) = module.location {
             switch type {
             case .client: return "#cce7f0"
+            case .component: return "#dae7cc"
             case .coordinator: return "#f0cce7"
             case .macro: return "#e7f0cc"
             case .screen: return "#f0e7cc"

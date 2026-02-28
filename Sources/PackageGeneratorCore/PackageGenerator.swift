@@ -294,6 +294,7 @@ public struct PackageGenerator {
             let typeName: String
             switch type {
             case .client: typeName = "Client"
+            case .component: typeName = "Component"
             case .coordinator: typeName = "Coordinator"
             case .macro: typeName = "Macro"
             case .screen: typeName = "Screen"
